@@ -277,6 +277,69 @@ Build the first CUDA-Q Logical exercise by taking the existing Bell-state workfl
 
 ---
 
+## 2026-10-07 — First CUDA-Q Logical resource estimate
+
+### Exercise
+
+I created a second exercise, `src/02_logical_resource_estimate.py`, using an ordinary CUDA-Q Bell-pair kernel and the CUDA-Q Logical estimator target. The goal was to move from successful import/setup into the first resource-estimation workflow.
+
+I ran:
+
+```bash
+python src/02_logical_resource_estimate.py
+```
+
+### Output
+
+The script ran successfully in the Linux Codespace. Importing CUDA-Q Logical produced a preview warning:
+
+```text
+UserWarning: cudaq-logical is in preview. Its APIs, behavior, and documentation may change substantially in upcoming versions.
+```
+
+The existing CUDA-Q migration warning for `sample` and `observe` also appeared on import.
+
+The estimator reported the backend stack as:
+
+```text
+== estimator :: CUDA-Q Logical backend stack =====================
+---- CUDA-Q / QUAKE -> P0 --------------------------------
+  ProgramBackend
+    source: CUDA-Q / Quake
+---- launch policies ---------------------------------------
+  (none)
+```
+
+The logical resource estimate reported:
+
+```text
+Logical Bell-pair resources:
+  peak logical qubits: 2
+  logical action depth: 6
+  logical actions: {'qlx_standard_cx': 1, 'qlx_standard_h': 1}
+  logical instruments: {'qlx_standard_measure_z': 2, 'qlx_standard_prepare_zero': 2}
+```
+
+### Interpretation
+
+The first Logical estimate completed successfully and reported the expected peak logical-qubit count of two for a Bell-pair kernel. The estimator stack also made the compilation boundary visible: the target stops at the portable logical P0 stage rather than selecting a code, device, or physical implementation.
+
+The returned profile separates logical gate-like actions from state-preparation and measurement instruments. For this Bell-pair example, the profile contains one logical Hadamard action, one logical controlled-X action, two zero-state preparations, and two Z-basis measurements. The reported action-depth upper bound is six for this imported CUDA-Q kernel. In this small example, that value is numerically equal to the total number of reported actions and instruments, but it should still be treated as an upper-bound depth metric rather than assumed to be a general raw-operation count.
+
+### Developer-experience observations
+
+- The preview status of CUDA-Q Logical is surfaced immediately at import time, which is useful context for a developer experimenting with the API.
+- The estimator's printed stack provides a concise view of where the workflow stops in the compilation pipeline.
+- The action and instrument dictionaries make the resource model substantially easier to interpret than the depth value alone.
+- Preparation and measurement are represented explicitly rather than being hidden behind the source kernel. This is an important distinction from a simple gate-count view of a circuit.
+- The field name `action_depth_upper_bound` is not self-explanatory enough to infer its semantics safely without consulting documentation or inspecting the accompanying profile fields.
+
+### Next step
+
+Compare the CUDA-Q Logical profile with the resource-accounting conventions used in the FTQC Workbench, then choose a slightly richer reversible primitive whose logical-resource structure makes the comparison more informative.
+
+---
+
 ## General observations
 
 The early CUDA-Q experience has been positive overall. Basic installation and first-program workflows were straightforward, and the Quick Start provided enough information to get to a successful quantum program quickly.
