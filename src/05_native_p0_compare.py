@@ -1,9 +1,12 @@
+"""Compare imported CUDA-Q and native CUDA-Q Logical P0 workflows."""
+
 import cudaq
 import cudaq.logical as cql
 
 
 @cudaq.kernel
 def imported_bell():
+    """Prepare and measure a Bell pair with an ordinary CUDA-Q kernel."""
     qubits = cudaq.qvector(2)
     h(qubits[0])
     x.ctrl(qubits[0], qubits[1])
@@ -12,6 +15,7 @@ def imported_bell():
 
 @cql.program
 def native_bell() -> tuple[bool, bool]:
+    """Prepare and measure a Bell pair as a native Logical P0 program."""
     qubits = cql.allocate(2, state=cql.types.zero)
 
     qubits[0] = cql.h(qubits[0])
@@ -24,6 +28,7 @@ def native_bell() -> tuple[bool, bool]:
 
 
 def report_imported():
+    """Estimate and print resources for the imported CUDA-Q kernel."""
     cudaq.set_target(cql.targets.estimator)
 
     estimate = cudaq.estimate(imported_bell)
@@ -40,6 +45,7 @@ def report_imported():
 
 
 def report_native():
+    """Compile and estimate resources for the native Logical P0 program."""
     build = cql.compile(native_bell)
 
     assert build.stage == cql.stages.P0
@@ -58,5 +64,11 @@ def report_native():
     print(f"  synthesis demand: {dict(resources.synthesis_demand)}")
 
 
-report_imported()
-report_native()
+def main():
+    """Compare the imported-kernel and native-P0 resource profiles."""
+    report_imported()
+    report_native()
+
+
+if __name__ == "__main__":
+    main()

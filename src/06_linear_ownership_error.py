@@ -1,9 +1,12 @@
+"""Demonstrate CUDA-Q Logical linear-ownership error handling."""
+
 import cudaq.logical as cql
 from cudaq.logical.errors import UseAfterConsume
 
 
 @cql.program
 def stale_owner() -> bool:
+    """Intentionally reuse a logical value after it has been consumed."""
     qubits = cql.allocate(1, state=cql.types.zero)
 
     # This consumes the current owner but does not rebind the successor.
@@ -15,23 +18,29 @@ def stale_owner() -> bool:
 
 @cql.program
 def rebound_owner() -> bool:
+    """Rebind the successor returned by the logical operation."""
     qubits = cql.allocate(1, state=cql.types.zero)
 
-    # Rebind the successor returned by the logical operation.
     qubits[0] = cql.h(qubits[0])
 
     return cql.measure_z(qubits[0])
 
 
-try:
-    cql.compile(stale_owner)
-except UseAfterConsume as error:
-    print("Caught expected UseAfterConsume error:")
-    print(error)
-else:
-    raise RuntimeError("Expected UseAfterConsume was not raised.")
+def main():
+    """Show the ownership failure and then compile the corrected program."""
+    try:
+        cql.compile(stale_owner)
+    except UseAfterConsume as error:
+        print("Caught expected UseAfterConsume error:")
+        print(error)
+    else:
+        raise RuntimeError("Expected UseAfterConsume was not raised.")
 
-corrected = cql.compile(rebound_owner)
+    corrected = cql.compile(rebound_owner)
 
-print("\nCorrected program compiled successfully.")
-print(f"Stage: {corrected.stage}")
+    print("\nCorrected program compiled successfully.")
+    print(f"Stage: {corrected.stage}")
+
+
+if __name__ == "__main__":
+    main()
