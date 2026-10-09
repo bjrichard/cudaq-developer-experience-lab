@@ -407,6 +407,98 @@ Use a richer reversible circuit to test how CUDA-Q Logical handles a small netwo
 
 ---
 
+## 2026-10-09 — Multi-controlled-X resource comparison
+
+### Exercise
+
+I created `src/04_multicontrol_resource_compare.py` to compare two ways of expressing a four-control X operation:
+
+1. an explicit clean-ancilla ladder built from five CCX operations; and
+2. a direct CUDA-Q multi-controlled X with four controls.
+
+The explicit ladder was chosen to match the construction already implemented in my FTQC Workbench. For four controls, that construction predicts five Toffoli operations and two clean ancillas.
+
+I ran:
+
+```bash
+python src/04_multicontrol_resource_compare.py
+```
+
+### Explicit clean-ancilla ladder
+
+The explicit ladder compiled and estimated successfully:
+
+```text
+Explicit clean-ancilla ladder
+  peak logical qubits: 7
+  logical action depth: 19
+  logical actions: {'qlx_standard_ccx': 5}
+  logical instruments: {'qlx_standard_measure_z': 7, 'qlx_standard_prepare_zero': 7}
+  synthesis demand: {'qlx_standard_ccx': 5}
+```
+
+This matches the FTQC Workbench prediction for a four-control X implemented with a clean-ancilla Toffoli ladder:
+
+- five CCX / Toffoli operations;
+- two clean ancillas;
+- seven peak logical qubits when the four controls, one target, and two ancillas are all represented explicitly.
+
+The CUDA-Q Logical estimate therefore agrees with the expected primitive logical structure of the explicit construction.
+
+### Direct four-control X
+
+The direct CUDA-Q multi-control expression did not lower successfully through the CUDA-Q Logical estimator.
+
+After updating the exercise to catch the expected compiler `RuntimeError`, the comparison reports the unsupported case cleanly instead of terminating with a traceback:
+
+```text
+Direct four-control X
+  status: unsupported by current CUDA-Q Logical import path
+  compiler message: loc("-":8:12): 'quake.x' op unsupported gate shape (supported: 1q H/S/Sdg/T/Tdg/X/Y/Z, single-control X/Z, and two-control X/Z)
+```
+
+The underlying conversion still fails during the `prepare-quake-for-qlx,convert-quake-to-qlx` pass pipeline. The diagnostic identifies the unsupported source operation as a `quake.x` with four controls and one target.
+
+### Interpretation
+
+This result separates two capabilities that are easy to conflate.
+
+Base CUDA-Q accepts a multi-controlled X expressed with more than two controls. However, in the current CUDA-Q Logical preview, the Quake-to-P0 import path used by the estimator accepts only one-qubit gates, single-control X/Z, and two-control X/Z for this gate family. A direct four-control X therefore cannot currently be imported into the portable logical profile through this path.
+
+The explicit decomposition succeeds because every operation is already expressed as a supported two-control X / CCX primitive.
+
+This means that, for the current preview, a developer who wants a logical resource estimate for a higher-order controlled-X can lower or decompose that operation into supported primitives before invoking the Logical estimator.
+
+### Comparison with FTQC Workbench
+
+The successful explicit-ladder estimate provides a direct cross-check of the FTQC Workbench construction.
+
+For a four-control X, the FTQC Workbench predicts:
+
+```text
+Toffoli count = 2k - 3 = 5
+clean ancillas = k - 2 = 2
+```
+
+CUDA-Q Logical reports five `qlx_standard_ccx` actions and five corresponding synthesis demands for the same explicit ladder.
+
+The direct higher-level form, however, exposes a difference in supported abstraction boundaries. Base CUDA-Q can represent the higher-order controlled operation directly, whereas the current CUDA-Q Logical import path requires it to be expressed using a supported gate shape before logical profiling.
+
+### Developer-experience observations
+
+- The failure is technically informative: the error message states the supported gate shapes and points directly to the unsupported `quake.x` operation.
+- Catching the expected compiler error makes the exercise itself a stable comparison tool: both the successful explicit decomposition and the current unsupported direct form are reported in one run.
+- The distinction between what base CUDA-Q can express and what CUDA-Q Logical can currently import is not obvious until the conversion is attempted.
+- The explicit ladder provides a practical workaround and produces a resource profile that matches the independently implemented FTQC Workbench scaling rule.
+- This is a useful example of why developer documentation should distinguish source-language expressivity from the subset currently supported by a downstream compiler or resource-estimation layer.
+- Because CUDA-Q Logical is explicitly a preview, this limitation should be documented as a current capability boundary rather than treated as a defect in the broader CUDA-Q programming model.
+
+### Next step
+
+Investigate whether CUDA-Q Logical documents this imported-kernel gate-shape boundary explicitly, and decide whether to continue with a richer supported reversible primitive or move from imported CUDA-Q kernels to CUDA-Q Logical's native P0 programming model.
+
+---
+
 ## General observations
 
 The early CUDA-Q experience has been positive overall. Basic installation and first-program workflows were straightforward, and the Quick Start provided enough information to get to a successful quantum program quickly.
