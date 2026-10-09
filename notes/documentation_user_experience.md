@@ -499,6 +499,120 @@ Investigate whether CUDA-Q Logical documents this imported-kernel gate-shape bou
 
 ---
 
+## 2026-10-09 — Imported versus native P0 workflow comparison
+
+### Exercise
+
+I created `src/05_native_p0_compare.py` to compare two CUDA-Q Logical entry points for the same Bell-pair computation:
+
+1. an ordinary `@cudaq.kernel` imported into CUDA-Q Logical; and
+2. a program authored directly with `@cql.program` and compiled to the portable logical P0 stage.
+
+I ran:
+
+```bash
+python src/05_native_p0_compare.py
+```
+
+### Output
+
+Both workflows produced the same substantive logical resource profile:
+
+```text
+Imported CUDA-Q kernel
+  peak logical qubits: 2
+  logical action depth: 6
+  logical actions: {'qlx_standard_cx': 1, 'qlx_standard_h': 1}
+  logical instruments: {'qlx_standard_measure_z': 2, 'qlx_standard_prepare_zero': 2}
+  synthesis demand: {}
+
+Native CUDA-Q Logical P0 program
+  stage: P0
+  peak logical qubits: 2
+  logical action depth: 6
+  logical actions: {'qlx_standard_h': 1, 'qlx_standard_cx': 1}
+  logical instruments: {'qlx_standard_prepare_zero': 2, 'qlx_standard_measure_z': 2}
+  synthesis demand: {}
+```
+
+The dictionary ordering differs, but the logical evidence is equivalent: two peak logical qubits, one H action, one CX action, two zero-state preparations, two Z measurements, and no synthesis demand.
+
+### Interpretation
+
+For this controlled Bell-pair example, importing an ordinary CUDA-Q kernel and authoring the same computation directly in CUDA-Q Logical both converge to the same P0 logical resource profile.
+
+The authoring experience is different, however. The native `@cql.program` form makes logical-value ownership explicit. Operations return successor logical values, so the live owner must be rebound after an operation, for example:
+
+```python
+qubits[0] = cql.h(qubits[0])
+qubits[0], qubits[1] = cql.cx(qubits[0], qubits[1])
+```
+
+This makes the logical dataflow more explicit than the ordinary CUDA-Q kernel syntax.
+
+### Developer-experience observations
+
+- The imported-kernel path provides a lower-friction entry point for developers already familiar with ordinary CUDA-Q kernels.
+- The native P0 path exposes the logical programming model more directly, especially the ownership and rebinding semantics.
+- Equivalent resource profiles in this small example provide a useful cross-check that the two entry points are describing the same logical computation.
+- The native syntax introduces a new concept that is not obvious from ordinary circuit-style programming: logical values are consumed and replaced rather than mutated in place.
+
+### Next step
+
+Deliberately violate the native P0 ownership rule to evaluate the quality of CUDA-Q Logical's error diagnostics and then demonstrate the correct rebinding pattern.
+
+---
+
+## 2026-10-09 — Linear ownership error and recovery
+
+### Exercise
+
+I created `src/06_linear_ownership_error.py` to test how CUDA-Q Logical reports an ownership violation in a native P0 program.
+
+The first program intentionally applies `cql.h()` without rebinding the returned logical value, then tries to measure the stale value. The second program demonstrates the corrected pattern by rebinding the successor before measurement.
+
+I ran:
+
+```bash
+python src/06_linear_ownership_error.py
+```
+
+### Output
+
+The intentionally invalid program raised the expected typed exception:
+
+```text
+Caught expected UseAfterConsume error:
+logical value ('allocation', 0, 'alloc0', 0, 0) was already consumed; cannot use it in qlx.measure_z
+```
+
+The corrected program then compiled successfully:
+
+```text
+Corrected program compiled successfully.
+Stage: p0
+```
+
+### Interpretation
+
+CUDA-Q Logical's ownership model is enforced during compilation. Once an operation consumes a logical value, reusing the stale owner is rejected rather than silently accepted. Rebinding the successor returned by the operation resolves the issue and allows the program to compile to P0.
+
+The diagnostic is semantically informative: it identifies that the logical value was already consumed and names the operation (`qlx.measure_z`) that attempted the invalid reuse. It does not, however, point directly to the offending Python source line in the printed message. For a larger program, source-location information could make the error faster to diagnose.
+
+### Developer-experience observations
+
+- A dedicated `UseAfterConsume` exception is substantially more useful than a generic compiler failure because it communicates the programming-model violation directly.
+- The message identifies both the consumed logical value and the operation attempting to reuse it.
+- The correction is concise once the ownership rule is understood: assign the successor returned by the logical operation back to the live variable.
+- The lack of an explicit Python source location in the printed diagnostic may increase debugging time in larger native P0 programs.
+- This exercise makes the linear-ownership model more concrete than reading the rule in documentation alone.
+
+### Next step
+
+Use the ownership and P0 lessons from these exercises to evaluate a slightly richer native logical program, while continuing to distinguish API-learning observations from resource-model conclusions.
+
+---
+
 ## General observations
 
 The early CUDA-Q experience has been positive overall. Basic installation and first-program workflows were straightforward, and the Quick Start provided enough information to get to a successful quantum program quickly.
