@@ -28,6 +28,7 @@ def main():
     print(f"  logical action depth: {resources.action_depth_upper_bound}")
     print(f"  logical actions: {dict(resources.actions)}")
     print(f"  logical instruments: {dict(resources.instruments)}")
+    print(f"  synthesis demand: {dict(resources.synthesis_demand)}")
 
 
 if __name__ == "__main__":
