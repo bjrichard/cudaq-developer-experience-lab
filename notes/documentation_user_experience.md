@@ -340,6 +340,73 @@ Compare the CUDA-Q Logical profile with the resource-accounting conventions used
 
 ---
 
+## 2026-10-09 — Toffoli resource estimation and FTQC Workbench comparison
+
+### Exercise
+
+I created `src/03_toffoli_resource_estimate.py` to test how CUDA-Q Logical represents a doubly controlled-X (Toffoli/CCX) operation at the portable logical-resource level.
+
+After reopening the Codespace terminal, the virtual environment first had to be reactivated:
+
+```bash
+source .venv/bin/activate
+```
+
+The initial `No module named 'cudaq'` message was therefore an environment-activation issue rather than a CUDA-Q installation or API problem.
+
+I then ran:
+
+```bash
+python src/03_toffoli_resource_estimate.py
+```
+
+### Output
+
+The script completed successfully and reported:
+
+```text
+Logical Toffoli resources:
+  peak logical qubits: 3
+  logical action depth: 7
+  logical actions: {'qlx_standard_ccx': 1}
+  logical instruments: {'qlx_standard_measure_z': 3, 'qlx_standard_prepare_zero': 3}
+  synthesis demand: {'qlx_standard_ccx': 1}
+```
+
+The CUDA-Q Logical preview warning and the existing CUDA-Q migration warning for `sample` and `observe` also appeared on import.
+
+### Interpretation
+
+At the portable logical level, CUDA-Q Logical preserves the doubly controlled-X as one `qlx_standard_ccx` action rather than immediately decomposing it into Clifford+T operations. The same operation appears in `synthesis_demand`, making the need for later non-Clifford synthesis explicit while leaving the implementation choice unresolved at this stage.
+
+The estimate also reports three logical-qubit preparations and three Z-basis measurements as instruments. As with the Bell-pair example, preparation and measurement are explicit parts of the logical profile rather than being hidden behind the source kernel.
+
+The reported action-depth upper bound is seven. In this small example, that is numerically equal to one logical CCX action plus six preparation/measurement instruments, but this should not be treated as a general definition of the depth metric.
+
+### Comparison with FTQC Workbench
+
+This result provides a useful conceptual comparison with the resource-accounting model in my FTQC Workbench.
+
+The FTQC Workbench also treats a Toffoli as a primitive logical operation at its first accounting layer. A circuit containing a primitive Toffoli can therefore have a nonzero Toffoli count while still having zero explicit primitive T gates. A separate analytical estimate then applies a named convention of seven T gates per Toffoli.
+
+CUDA-Q Logical makes a similar separation of abstraction levels, but represents the unresolved lower-level requirement as `synthesis_demand` rather than immediately applying a fixed T-count convention. At the P0 logical profile, the CCX remains a logical action whose eventual implementation is deferred to later compilation or architecture choices.
+
+There are also differences in what the two models expose. CUDA-Q Logical explicitly includes state preparation and measurement instruments in its logical profile. The current FTQC Workbench resource estimator focuses on the gates represented in its circuit intermediate representation and does not model preparation and measurement as comparable first-class resource entries.
+
+### Developer-experience observations
+
+- The `actions` and `synthesis_demand` fields make the abstraction boundary visible: the logical operation is counted now, while its lower-level realization is deferred.
+- The relationship between `actions` and `synthesis_demand` became clearer after running a non-Clifford example than it was from the Bell-pair example alone.
+- The result maps naturally onto a resource-modeling distinction I had already encountered independently: counting logical primitives separately from assigning lower-level non-Clifford cost conventions.
+- The explicit treatment of preparation and measurement makes CUDA-Q Logical's logical profile broader than a gate-count-only resource model.
+- Reactivating `.venv` after reopening the Codespace is standard Python virtual-environment behavior and should not be interpreted as CUDA-Q-specific friction.
+
+### Next step
+
+Use a richer reversible circuit to test how CUDA-Q Logical handles a small network of controlled operations and compare its logical profile with the scaling conventions already implemented in the FTQC Workbench.
+
+---
+
 ## General observations
 
 The early CUDA-Q experience has been positive overall. Basic installation and first-program workflows were straightforward, and the Quick Start provided enough information to get to a successful quantum program quickly.
