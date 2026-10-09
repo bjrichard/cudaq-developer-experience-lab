@@ -1,0 +1,16 @@
+{
+  "name": "CUDA-Q Developer Experience Lab",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+  "postCreateCommand": "python -m venv .venv && . .venv/bin/activate && python -m pip install --upgrade pip && python -m pip install 'cudaq==0.16.0'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+        "python.terminal.activateEnvironment": true
+      }
+    }
+  }
+}
