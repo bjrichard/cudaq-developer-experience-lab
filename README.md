@@ -87,6 +87,39 @@ python src/06_linear_ownership_error.py
 
 CUDA-Q Logical is a preview feature, so APIs and behavior may change.
 
+### One-click setup in GitHub Codespaces
+
+The repository includes a development-container configuration for a reproducible Linux environment with Python 3.12 and CUDA-Q 0.16.0.
+
+From the GitHub repository page:
+
+1. Select **Code**.
+2. Open the **Codespaces** tab.
+3. Create a Codespace on `main`.
+
+The container creates `.venv` and installs the pinned CUDA-Q version automatically. After it finishes building, activate the environment if the terminal has not already done so:
+
+```bash
+source .venv/bin/activate
+```
+
+Verify the installation:
+
+```bash
+python -c "import cudaq; print(cudaq.__version__)"
+python -c "import cudaq.logical as cql; print('CUDA-Q Logical import successful')"
+```
+
+### Run all exercises
+
+With the virtual environment active:
+
+```bash
+./scripts/run_all_exercises.sh
+```
+
+The script runs Exercises 01–06 in order and stops if an exercise fails.
+
 ## Developer-experience method
 
 For each step, the project records:
@@ -104,17 +137,21 @@ The notes cover installation, documentation discovery, platform support, warning
 
 ```text
 cudaq-developer-experience-lab/
-├── README.md
-├── environment.yml
+├── .devcontainer/
+│   └── devcontainer.json
 ├── notes/
 │   └── documentation_user_experience.md
-└── src/
-    ├── 01_bell_state.py
-    ├── 02_logical_resource_estimate.py
-    ├── 03_toffoli_resource_estimate.py
-    ├── 04_multicontrol_resource_compare.py
-    ├── 05_native_p0_compare.py
-    └── 06_linear_ownership_error.py
+├── scripts/
+│   └── run_all_exercises.sh
+├── src/
+│   ├── 01_bell_state.py
+│   ├── 02_logical_resource_estimate.py
+│   ├── 03_toffoli_resource_estimate.py
+│   ├── 04_multicontrol_resource_compare.py
+│   ├── 05_native_p0_compare.py
+│   └── 06_linear_ownership_error.py
+├── environment.yml
+└── README.md
 ```
 
 ## Scope and limitations
